@@ -1,0 +1,6 @@
+{
+  "name": "PAYAL Voice Assistant",
+  "description": "Production-ready Android AI Voice Assistant powered by Gemini Live WebSocket, native PCM audio, Hinglish conversational personality, and full phone actions.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
