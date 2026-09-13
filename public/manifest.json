@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "PAYAL Voice Assistant",
+  "short_name": "PAYAL",
+  "description": "Production-ready Android AI Voice Assistant powered by Gemini Live WebSocket, native PCM audio, Hinglish conversational personality, and full phone actions.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

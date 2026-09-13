@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Modality } from '@google/genai';
@@ -466,6 +467,23 @@ app.post('/api/payal/transcribe', async (req, res) => {
   } catch (err: any) {
     console.error('Transcription error handled gracefully:', err?.message || err);
     return res.json({ transcript: '', error: err?.message || 'Transcription unavailable' });
+  }
+});
+
+// Download complete codebase file
+app.get('/api/payal/download-code', (req, res) => {
+  try {
+    const format = req.query.format === 'md' ? 'md' : 'txt';
+    const filename = format === 'md' ? 'PAYAL_AI_SOURCE_CODE.md' : 'PAYAL_AI_SOURCE_CODE.txt';
+    const filePath = path.join(process.cwd(), filename);
+    if (fs.existsSync(filePath)) {
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      return res.sendFile(filePath);
+    }
+    return res.status(404).send('Source code file not found');
+  } catch (err: any) {
+    return res.status(500).send(err?.message || 'Error serving code file');
   }
 });
 

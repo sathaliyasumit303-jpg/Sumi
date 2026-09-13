@@ -85,6 +85,7 @@ export interface AssistantSettings {
   accessibilityEnabled: boolean;
   continuousListening: boolean;
   callMonitorEnabled: boolean;
+  backgroundListeningEnabled: boolean;
 }
 
 export interface SettingsConfig extends AssistantSettings {

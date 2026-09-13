@@ -12,6 +12,8 @@ import { WaveformBarView } from './components/WaveformBarView';
 import { WebAudioEngine } from './utils/audioEngine';
 import { parseVoiceCommand } from './utils/commandParser';
 import { deduplicateSpeech, removeEmojis, cleanForSpeech } from './utils/textCleaner';
+import { backgroundAudioKeepAlive } from './utils/backgroundAudioKeepAlive';
+import { CodeExportModal } from './components/CodeExportModal';
 import {
   Mic,
   MicOff,
@@ -88,6 +90,7 @@ const DEFAULT_SETTINGS: AssistantSettings = {
   accessibilityEnabled: true,
   continuousListening: true,
   callMonitorEnabled: true,
+  backgroundListeningEnabled: true,
 };
 
 export function App() {
@@ -113,6 +116,10 @@ export function App() {
               : DEFAULT_SETTINGS.contactGroups,
           wakeWord: parsed.wakeWord || DEFAULT_SETTINGS.wakeWord,
           wakeWordEnabled: false, // Explicitly keep wake word off by default for rock-solid mic
+          backgroundListeningEnabled:
+            parsed.backgroundListeningEnabled !== undefined ? parsed.backgroundListeningEnabled : true,
+          continuousListening:
+            parsed.continuousListening !== undefined ? parsed.continuousListening : true,
         };
       }
     } catch (_e) {}
@@ -144,6 +151,7 @@ export function App() {
   const [bluetoothOn, setBluetoothOn] = useState(true);
   const [isIncomingCall, setIsIncomingCall] = useState(false);
   const [lastExecutedCommand, setLastExecutedCommand] = useState<AppCommand | null>(null);
+  const [showCodeModal, setShowCodeModal] = useState(false);
 
   const audioEngineRef = useRef<WebAudioEngine | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -161,6 +169,23 @@ export function App() {
   const autoListenTimeoutRef = useRef<any>(null);
   const isListeningSessionActiveRef = useRef<boolean>(false);
   const startListeningRef = useRef<() => void>();
+  const backgroundWatchdogUnregisterRef = useRef<(() => void) | null>(null);
+  const [isBackgrounded, setIsBackgrounded] = useState<boolean>(
+    typeof document !== 'undefined' ? document.hidden : false
+  );
+
+  // Background tab visibility watchdog
+  useEffect(() => {
+    const handleVisChange = () => {
+      const hidden = document.hidden;
+      setIsBackgrounded(hidden);
+      if (hidden && isListeningSessionActiveRef.current) {
+        setListeningNote('🎙️ बैकग्राउंड लिसनिंग चालू (PAYAL दूसरे टैब में भी सुन रही है)');
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisChange);
+    return () => document.removeEventListener('visibilitychange', handleVisChange);
+  }, []);
 
   const isMicMutedRef = useRef(isMicMuted);
   useEffect(() => {
@@ -255,12 +280,16 @@ export function App() {
       startListening();
     };
 
-    if (settings.wakeWordEnabled && !isMicMuted && !isIncomingCall) {
-      engine.startWakeWordDetection();
+    if ((settings.wakeWordEnabled || settings.backgroundListeningEnabled) && !isMicMuted && !isIncomingCall) {
+      backgroundAudioKeepAlive.start();
+      if (settings.wakeWordEnabled) {
+        engine.startWakeWordDetection();
+      }
     }
 
     return () => {
       stopListening(true);
+      backgroundAudioKeepAlive.stop();
       engine.release();
     };
   }, []);
@@ -298,6 +327,13 @@ export function App() {
 
   const stopListening = (cancelOnly = false) => {
     isListeningSessionActiveRef.current = false;
+    if (backgroundWatchdogUnregisterRef.current) {
+      backgroundWatchdogUnregisterRef.current();
+      backgroundWatchdogUnregisterRef.current = null;
+    }
+    if (!settings.wakeWordEnabled) {
+      backgroundAudioKeepAlive.stop();
+    }
     if (cancelOnly) {
       autoListenLoopRef.current = false;
       if (autoListenTimeoutRef.current) {
@@ -386,12 +422,26 @@ export function App() {
     audioEngineRef.current.stopWakeWordDetection();
     audioEngineRef.current.stopRecording();
 
+    // Start background keep-alive loop
+    if (settings.backgroundListeningEnabled) {
+      backgroundAudioKeepAlive.start();
+    }
+
+    if (backgroundWatchdogUnregisterRef.current) {
+      backgroundWatchdogUnregisterRef.current();
+      backgroundWatchdogUnregisterRef.current = null;
+    }
+
     // Mark that listening is now active and in user conversational loop
     autoListenLoopRef.current = true;
     isListeningSessionActiveRef.current = true;
     accumulatedSpeechRef.current = '';
     setLiveTranscript('');
-    setListeningNote('🎙️ सुन रही हूँ... पूरी बात बोलिए (माइक चालू है)');
+    setListeningNote(
+      document.hidden
+        ? '🎙️ बैकग्राउंड लिसनिंग चालू... बोलिए'
+        : '🎙️ सुन रही हूँ... पूरी बात बोलिए (माइक चालू है)'
+    );
     setIsMicActive(true);
     setOrbState('listening');
 
@@ -492,19 +542,19 @@ export function App() {
         };
 
         recognition.onerror = async (event: any) => {
-          console.warn('SpeechRecognition note/error:', event.error);
+          console.warn('SpeechRecognition event/error:', event.error);
           if (event.error === 'no-speech') {
             // DO NOT STOP ON NO-SPEECH: keep listening alive while user pauses
             return;
           }
-          if (
-            event.error === 'audio-capture' ||
-            event.error === 'not-allowed' ||
-            event.error === 'service-not-allowed'
-          ) {
-            setListeningNote('Switching to high-compatibility voice recorder...');
-            await startFallbackAudioRecorder();
-          }
+          // On mobile Android or WebView: 'network', 'audio-capture', 'not-allowed', 'service-not-allowed', 'aborted'
+          // Switch automatically and seamlessly to our high-compatibility MediaRecorder + Gemini STT!
+          try {
+            recognition.abort();
+          } catch (_e) {}
+          recognitionRef.current = null;
+          setListeningNote('🎙️ बैकअप ऑडियो रिकॉर्डर चालू... पूरी बात बोलिए');
+          await startFallbackAudioRecorder();
         };
 
         recognition.onend = () => {
@@ -543,10 +593,25 @@ export function App() {
 
   const startFallbackAudioRecorder = async () => {
     try {
-      setListeningNote('🎙️ High-Compatibility Voice Recorder Active (Boliye...)');
-      const recorder = await audioEngineRef.current!.startVoiceRecordingSnippet((amp) => {
-        setAmplitude(amp);
-      });
+      setListeningNote('🎙️ सुन रही हूँ... पूरी बात बोलिए (माइक चालू है)');
+      setIsMicActive(true);
+      setOrbState('listening');
+
+      const recorder = await audioEngineRef.current!.startVoiceRecordingSnippet(
+        (amp) => {
+          setAmplitude(amp);
+        },
+        () => {
+          // Speech detected by VAD
+          setListeningNote('🎙️ आपकी आवाज़ सुन रही हूँ... (बोलते रहिए)');
+        },
+        () => {
+          // Silence detected after speech by VAD - automatically send!
+          if (isListeningSessionActiveRef.current && !isProcessingRef.current) {
+            handleDoneSpeaking();
+          }
+        }
+      );
       fallbackRecorderRef.current = recorder;
     } catch (err: any) {
       console.error('Audio recorder failed:', err);
@@ -560,7 +625,7 @@ export function App() {
   const handleDoneSpeaking = async () => {
     // If fallback recorder was running
     if (fallbackRecorderRef.current) {
-      setListeningNote('Voice process ho rahi hai...');
+      setListeningNote('आपकी बात प्रोसेस हो रही है...');
       setOrbState('thinking');
       const rec = fallbackRecorderRef.current;
       fallbackRecorderRef.current = null;
@@ -898,8 +963,32 @@ export function App() {
           </div>
         </div>
 
-        {/* Clean Status Badge - No options or settings */}
+        {/* Status Badges & Quick Actions */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowCodeModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-all shadow-md shadow-red-950/50 cursor-pointer active:scale-95"
+            title="पायल एआई का पूरा कोड डाउनलोड या कॉपी करें"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>कोड डाउनलोड करें</span>
+          </button>
+
+          <div
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition-colors ${
+              isBackgrounded
+                ? 'bg-amber-950/50 border-amber-800/60 text-amber-300'
+                : 'bg-neutral-900 border-neutral-800 text-neutral-300'
+            }`}
+            title="Service Worker & Web Audio keep-alive: Tab switch करने पर भी माइक चालू रहता है"
+          >
+            <Radio className={`w-3.5 h-3.5 ${isMicActive ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`} />
+            <span className="hidden sm:inline text-neutral-400">Background:</span>
+            <span className={isMicActive ? 'text-emerald-400 font-medium' : 'text-neutral-300 font-medium'}>
+              {isBackgrounded ? 'Background Tab' : 'Active'}
+            </span>
+          </div>
+
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900 border border-neutral-800 text-xs">
             <span
               className={`w-2 h-2 rounded-full ${
@@ -1067,32 +1156,45 @@ export function App() {
                     </strong>
                   </div>
 
-                  <div
-                    className={`px-3.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all ${
+                  {/* Primary Mic Action Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleMic();
+                    }}
+                    className={`px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 transition-all shadow-lg cursor-pointer ${
                       isMicActive
-                        ? 'bg-red-600/90 text-white shadow-md shadow-red-600/40 animate-pulse'
+                        ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/50 animate-pulse'
                         : orbState === 'speaking'
-                        ? 'bg-rose-950/80 border border-rose-800 text-rose-300'
-                        : 'bg-neutral-950 border border-neutral-800 text-neutral-400 group-hover:text-neutral-200 group-hover:border-neutral-700'
+                        ? 'bg-rose-900/90 hover:bg-rose-800 border border-rose-700 text-rose-200'
+                        : orbState === 'thinking'
+                        ? 'bg-amber-900/80 border border-amber-700 text-amber-200'
+                        : 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/40 active:scale-95'
                     }`}
                   >
                     {isMicActive ? (
                       <>
-                        <Mic className="w-3.5 h-3.5 text-white" />
-                        <span>माइक चालू है — पूरी बात बोलिए, विराम लेने पर खुद प्रोसेस होगा</span>
+                        <Mic className="w-4 h-4 text-white animate-bounce" />
+                        <span>सुन रही हूँ... (बोलना पूरा होने पर टैप करें)</span>
                       </>
                     ) : orbState === 'speaking' ? (
                       <>
-                        <Square className="w-3 h-3 fill-current text-rose-400" />
-                        <span>पायल बोल रही हैं... (बोलने के बाद माइक स्वतः चालू होगा)</span>
+                        <Square className="w-4 h-4 fill-current text-rose-300" />
+                        <span>पायल को रोकें (Stop)</span>
+                      </>
+                    ) : orbState === 'thinking' ? (
+                      <>
+                        <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
+                        <span>प्रोसेस हो रहा है...</span>
                       </>
                     ) : (
                       <>
-                        <Mic className="w-3.5 h-3.5 text-red-400" />
-                        <span>पायल पर टैप करके बातचीत शुरू करें</span>
+                        <Mic className="w-4 h-4 text-white" />
+                        <span>माइक चालू करें / बोलें (Tap to Speak)</span>
                       </>
                     )}
-                  </div>
+                  </button>
 
                   {/* Auto-Mic Continuous Hands-free Loop Indicator & Toggle */}
                   <button
@@ -1296,6 +1398,12 @@ export function App() {
             </div>
           </div>
       </main>
+
+      {/* Code Export & Download Modal */}
+      <CodeExportModal
+        isOpen={showCodeModal}
+        onClose={() => setShowCodeModal(false)}
+      />
     </div>
   );
 }

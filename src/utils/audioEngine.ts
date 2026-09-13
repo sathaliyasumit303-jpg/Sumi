@@ -9,6 +9,7 @@
  */
 
 import { cleanForSpeech, removeEmojis, convertHinglishToDevanagari } from './textCleaner';
+import { backgroundAudioKeepAlive } from './backgroundAudioKeepAlive';
 
 export class WebAudioEngine {
   private micContext: AudioContext | null = null;
@@ -16,6 +17,8 @@ export class WebAudioEngine {
   private micStream: MediaStream | null = null;
   private analyser: AnalyserNode | null = null;
   private animFrameId: number | null = null;
+  private unregisterRmsWatchdog: (() => void) | null = null;
+  private wakeWordUnregisterWatchdog: (() => void) | null = null;
 
   private isSpeaking = false;
   private isMuted = false;
@@ -47,6 +50,7 @@ export class WebAudioEngine {
 
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       this.micContext = new AudioCtx({ sampleRate: 16000 });
+      backgroundAudioKeepAlive.registerAudioContext(this.micContext);
 
       this.micStream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -63,7 +67,7 @@ export class WebAudioEngine {
 
       const pcmData = new Uint8Array(this.analyser.frequencyBinCount);
 
-      const loop = () => {
+      const computeRms = () => {
         if (!this.analyser) return;
 
         if (this.isSpeaking || this.isMuted) {
@@ -82,11 +86,27 @@ export class WebAudioEngine {
           const amplifiedRms = Math.min(1.0, rms * 3.2);
           this.onAmplitudeChanged?.(amplifiedRms);
         }
+      };
 
+      const loop = () => {
+        if (!this.analyser) return;
+        computeRms();
         this.animFrameId = requestAnimationFrame(loop);
       };
 
       loop();
+
+      // Register background watchdog: when tab is hidden or in background,
+      // the unthrottled Web Worker heartbeat will continue invoking computeRms()!
+      if (this.unregisterRmsWatchdog) {
+        this.unregisterRmsWatchdog();
+      }
+      this.unregisterRmsWatchdog = backgroundAudioKeepAlive.registerWatchdog(() => {
+        if (document.hidden && this.analyser) {
+          computeRms();
+        }
+      });
+
       return true;
     } catch (err) {
       console.warn('Microphone permission not granted or unavailable:', err);
@@ -99,6 +119,10 @@ export class WebAudioEngine {
    * Crucial for Android to prevent "Chrome is recording" system locks
    */
   stopRecording(): void {
+    if (this.unregisterRmsWatchdog) {
+      this.unregisterRmsWatchdog();
+      this.unregisterRmsWatchdog = null;
+    }
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
@@ -113,6 +137,7 @@ export class WebAudioEngine {
     }
     if (this.micContext && this.micContext.state !== 'closed') {
       try {
+        backgroundAudioKeepAlive.unregisterAudioContext(this.micContext);
         this.micContext.close();
       } catch (_e) {}
       this.micContext = null;
@@ -148,6 +173,7 @@ export class WebAudioEngine {
         const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
         if (!this.speakerContext || this.speakerContext.state === 'closed') {
           this.speakerContext = new AudioCtx({ sampleRate });
+          backgroundAudioKeepAlive.registerAudioContext(this.speakerContext);
         }
 
         const proceed = () => {
@@ -587,6 +613,10 @@ export class WebAudioEngine {
 
   stopWakeWordDetection(): void {
     this.isListeningForWakeWord = false;
+    if (this.wakeWordUnregisterWatchdog) {
+      this.wakeWordUnregisterWatchdog();
+      this.wakeWordUnregisterWatchdog = null;
+    }
     if (this.wakeWordRestartTimeout) {
       clearTimeout(this.wakeWordRestartTimeout);
       this.wakeWordRestartTimeout = null;
@@ -608,9 +638,12 @@ export class WebAudioEngine {
 
   /**
    * Records a user voice snippet via MediaRecorder for fallback STT transcription
+   * Supports real-time RMS monitoring and Voice Activity Detection (VAD) with auto-silence detection
    */
   async startVoiceRecordingSnippet(
-    onAmplitude?: (amp: number) => void
+    onAmplitude?: (amp: number) => void,
+    onSpeechDetected?: () => void,
+    onSilenceDetected?: () => void
   ): Promise<{ stop: () => Promise<{ base64: string; mimeType: string }> }> {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -629,6 +662,8 @@ export class WebAudioEngine {
 
     const pcmData = new Uint8Array(analyser.frequencyBinCount);
     let animId: number | null = null;
+    let hasSpoken = false;
+    let silenceTimer: any = null;
 
     const measureLoop = () => {
       analyser.getByteTimeDomainData(pcmData);
@@ -638,7 +673,27 @@ export class WebAudioEngine {
         sum += val * val;
       }
       const rms = Math.sqrt(sum / pcmData.length);
-      onAmplitude?.(Math.min(1.0, rms * 3.5));
+      const scaledAmp = Math.min(1.0, rms * 4.0);
+      onAmplitude?.(scaledAmp);
+
+      // Simple real-time Voice Activity Detection (VAD)
+      if (rms > 0.035) {
+        if (!hasSpoken) {
+          hasSpoken = true;
+          onSpeechDetected?.();
+        }
+        if (silenceTimer) {
+          clearTimeout(silenceTimer);
+          silenceTimer = null;
+        }
+      } else if (hasSpoken) {
+        if (!silenceTimer) {
+          silenceTimer = setTimeout(() => {
+            onSilenceDetected?.();
+          }, 1600);
+        }
+      }
+
       animId = requestAnimationFrame(measureLoop);
     };
     measureLoop();
@@ -804,9 +859,11 @@ export class WebAudioEngine {
       this.micStream = null;
     }
     if (this.micContext && this.micContext.state !== 'closed') {
+      backgroundAudioKeepAlive.unregisterAudioContext(this.micContext);
       this.micContext.close();
     }
     if (this.speakerContext && this.speakerContext.state !== 'closed') {
+      backgroundAudioKeepAlive.unregisterAudioContext(this.speakerContext);
       this.speakerContext.close();
     }
   }
