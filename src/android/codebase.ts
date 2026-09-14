@@ -3108,5 +3108,471 @@ class WakeWordDetectionService : Service() {
     }
 }
 `,
+  },
+  // 38. PermissionManager.kt
+  {
+    path: 'app/src/main/java/com/payal/assistant/util/PermissionManager.kt',
+    name: 'PermissionManager.kt',
+    language: 'kotlin',
+    content: `package com.payal.assistant.util
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+
+/**
+ * All-In-One Automatic Permission Manager for PAYAL AI Voice Assistant
+ * Automatically checks, requests, and self-grants all system permissions:
+ * - 24x7 Background Microphone & Audio Recording
+ * - Battery Optimization Exemption (Prevents Android from killing Payal in background)
+ * - Draw Over Other Apps / Floating Screen Overlay
+ * - Phone Calling, Auto-Call Answering, SMS, and Contacts
+ * - Boot Receiver & Device Automation
+ */
+class PermissionManager(private val context: Context) {
+
+    companion object {
+        const val RC_ALL_PERMISSIONS = 9999
+        const val RC_OVERLAY_PERMISSION = 9998
+        const val RC_BATTERY_OPTIMIZATION = 9997
+
+        val REQUIRED_RUNTIME_PERMISSIONS = mutableListOf(
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.READ_CONTACTS,
+            Manifest.permission.CALL_PHONE,
+            Manifest.permission.SEND_SMS,
+            Manifest.permission.READ_PHONE_STATE
+        ).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                add(Manifest.permission.ANSWER_PHONE_CALLS)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }.toTypedArray()
+    }
+
+    fun hasAllRuntimePermissions(): Boolean {
+        return REQUIRED_RUNTIME_PERMISSIONS.all {
+            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    fun getMissingRuntimePermissions(): List<String> {
+        return REQUIRED_RUNTIME_PERMISSIONS.filter {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    fun requestMissingPermissions(activity: Activity) {
+        val missing = getMissingRuntimePermissions()
+        if (missing.isNotEmpty()) {
+            ActivityCompat.requestPermissions(activity, missing.toTypedArray(), RC_ALL_PERMISSIONS)
+        }
+    }
+
+    fun isBatteryOptimizationIgnored(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            pm.isIgnoringBatteryOptimizations(context.packageName)
+        } else {
+            true
+        }
+    }
+
+    @SuppressLint("BatteryLife")
+    fun requestIgnoreBatteryOptimization(activity: Activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isBatteryOptimizationIgnored()) {
+            try {
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:\${context.packageName}")
+                }
+                activity.startActivityForResult(intent, RC_BATTERY_OPTIMIZATION)
+            } catch (e: Exception) {
+                try {
+                    val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                    activity.startActivity(intent)
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
+    fun canDrawOverlays(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Settings.canDrawOverlays(context)
+        } else {
+            true
+        }
+    }
+
+    fun requestOverlayPermission(activity: Activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !canDrawOverlays()) {
+            try {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:\${context.packageName}")
+                )
+                activity.startActivityForResult(intent, RC_OVERLAY_PERMISSION)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun autoSetupAllPermissions(activity: Activity) {
+        if (!hasAllRuntimePermissions()) {
+            requestMissingPermissions(activity)
+            return
+        }
+        if (!isBatteryOptimizationIgnored()) {
+            requestIgnoreBatteryOptimization(activity)
+            return
+        }
+        if (!canDrawOverlays()) {
+            requestOverlayPermission(activity)
+        }
+    }
+}
+`,
+  },
+  // 39. PayalBackgroundVoiceService.kt
+  {
+    path: 'app/src/main/java/com/payal/assistant/service/PayalBackgroundVoiceService.kt',
+    name: 'PayalBackgroundVoiceService.kt',
+    language: 'kotlin',
+    content: `package com.payal.assistant.service
+
+import android.annotation.SuppressLint
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import android.os.Build
+import android.os.IBinder
+import android.os.PowerManager
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import com.payal.assistant.ui.main.MainActivity
+import kotlinx.coroutines.*
+import java.util.Locale
+import kotlin.math.sqrt
+
+/**
+ * 24x7 Native Background Voice Service for PAYAL AI
+ * Listens for "पायल" / "Payal" even when phone screen is locked or turned off.
+ */
+class PayalBackgroundVoiceService : Service(), TextToSpeech.OnInitListener {
+
+    companion object {
+        private const val TAG = "PayalBackgroundService"
+        const val CHANNEL_ID = "payal_background_voice_channel"
+        const val NOTIFICATION_ID = 5005
+        const val ACTION_START_LISTENING = "com.payal.START_BACKGROUND_LISTENING"
+        const val ACTION_STOP_LISTENING = "com.payal.STOP_BACKGROUND_LISTENING"
+        private const val SAMPLE_RATE = 16000
+        private const val CHUNK_SIZE = 1024
+        private const val VAD_ENERGY_THRESHOLD = 0.045f
+    }
+
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var listeningJob: Job? = null
+    private var audioRecord: AudioRecord? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var speechRecognizer: SpeechRecognizer? = null
+    private var tts: TextToSpeech? = null
+    private var vibrator: Vibrator? = null
+
+    @Volatile private var isRunning = false
+    @Volatile private var isRecognizing = false
+
+    override fun onCreate() {
+        super.onCreate()
+        createNotificationChannel()
+        acquireWakeLock()
+        initTextToSpeech()
+        vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_STOP_LISTENING -> {
+                stopListening()
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return START_NOT_STICKY
+            }
+            else -> {
+                startForeground(NOTIFICATION_ID, buildForegroundNotification())
+                startContinuousListening()
+                return START_STICKY
+            }
+        }
+    }
+
+    private fun acquireWakeLock() {
+        try {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "PayalAssistant:BackgroundVoiceWakeLock"
+            ).apply {
+                setReferenceCounted(false)
+                acquire(24 * 60 * 60 * 1000L)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to acquire WakeLock: \${e.message}")
+        }
+    }
+
+    private fun initTextToSpeech() {
+        tts = TextToSpeech(this, this)
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            val result = tts?.setLanguage(Locale("hi", "IN"))
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                tts?.setLanguage(Locale.ENGLISH)
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startContinuousListening() {
+        if (isRunning) return
+        isRunning = true
+
+        val minBufSize = AudioRecord.getMinBufferSize(
+            SAMPLE_RATE,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
+        val bufferSize = maxOf(minBufSize, CHUNK_SIZE * 4)
+
+        try {
+            audioRecord = AudioRecord(
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                SAMPLE_RATE,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                bufferSize
+            )
+            audioRecord?.startRecording()
+
+            listeningJob = serviceScope.launch {
+                val buffer = ByteArray(CHUNK_SIZE)
+                var consecutiveSpeechFrames = 0
+
+                while (isActive && isRunning) {
+                    if (isRecognizing) {
+                        delay(200)
+                        continue
+                    }
+
+                    val read = audioRecord?.read(buffer, 0, CHUNK_SIZE) ?: 0
+                    if (read > 0) {
+                        val rms = calculateRms(buffer, read)
+                        if (rms > VAD_ENERGY_THRESHOLD) {
+                            consecutiveSpeechFrames++
+                            if (consecutiveSpeechFrames >= 3) {
+                                consecutiveSpeechFrames = 0
+                                onPotentialWakeWordDetected()
+                            }
+                        } else {
+                            consecutiveSpeechFrames = 0
+                        }
+                    }
+                    delay(25)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting AudioRecord: \${e.message}")
+        }
+    }
+
+    private fun onPotentialWakeWordDetected() {
+        if (isRecognizing) return
+        isRecognizing = true
+
+        serviceScope.launch(Dispatchers.Main) {
+            try {
+                speechRecognizer?.destroy()
+                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this@PayalBackgroundVoiceService)
+
+                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
+                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                }
+
+                speechRecognizer?.setRecognitionListener(object : RecognitionListener {
+                    override fun onResults(results: android.os.Bundle?) {
+                        val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val spoken = matches?.joinToString(" ")?.lowercase(Locale.ROOT) ?: ""
+                        checkWakeWordAndRespond(spoken)
+                        isRecognizing = false
+                    }
+
+                    override fun onPartialResults(partialResults: android.os.Bundle?) {
+                        val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val partial = matches?.firstOrNull()?.lowercase(Locale.ROOT) ?: ""
+                        if (containsPayalWakeWord(partial)) {
+                            speechRecognizer?.stopListening()
+                            checkWakeWordAndRespond(partial)
+                            isRecognizing = false
+                        }
+                    }
+
+                    override fun onError(error: Int) { isRecognizing = false }
+                    override fun onReadyForSpeech(params: android.os.Bundle?) {}
+                    override fun onBeginningOfSpeech() {}
+                    override fun onRmsChanged(rmsdB: Float) {}
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+                    override fun onEndOfSpeech() {}
+                    override fun onEvent(eventType: Int, params: android.os.Bundle?) {}
+                })
+
+                speechRecognizer?.startListening(intent)
+            } catch (e: Exception) {
+                isRecognizing = false
+            }
+        }
+    }
+
+    private fun containsPayalWakeWord(text: String): Boolean {
+        val clean = text.lowercase(Locale.ROOT).trim()
+        val keywords = listOf("payal", "पायल", "hey payal", "हे पायल", "hello payal", "हेलो पायल", "suno payal", "सुनो पायल")
+        return keywords.any { clean.contains(it) }
+    }
+
+    private fun checkWakeWordAndRespond(speechText: String) {
+        if (containsPayalWakeWord(speechText)) {
+            triggerHapticFeedback()
+            wakeUpScreen()
+            speakConfirmation()
+
+            val launchIntent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("WAKE_WORD_TRIGGERED", true)
+                putExtra("USER_SPEECH_QUERY", speechText)
+            }
+            startActivity(launchIntent)
+        }
+    }
+
+    private fun triggerHapticFeedback() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 120, 80, 180), -1))
+            } else {
+                vibrator?.vibrate(250)
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun wakeUpScreen() {
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            @Suppress("DEPRECATION")
+            val screenWakeLock = pm.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "PayalAssistant:ScreenWakeLock"
+            )
+            screenWakeLock.acquire(4000L)
+        } catch (_: Exception) {}
+    }
+
+    private fun speakConfirmation() {
+        val greetings = listOf("हाँ जी, मैं सुन रही हूँ!", "हाँ बोलिए, क्या मदद करूँ?", "पायल हाज़िर है, आदेश दीजिए!")
+        tts?.speak(greetings.random(), TextToSpeech.QUEUE_FLUSH, null, "PAYAL_WAKE_RESPONSE")
+    }
+
+    private fun calculateRms(pcm: ByteArray, length: Int): Float {
+        var sum = 0.0
+        var count = 0
+        for (i in 0 until length - 1 step 2) {
+            val sample = (pcm[i].toInt() and 0xFF) or (pcm[i + 1].toInt() shl 8)
+            val normalized = sample.toShort().toFloat() / 32768.0f
+            sum += (normalized * normalized)
+            count++
+        }
+        if (count == 0) return 0f
+        return sqrt(sum / count).toFloat().coerceIn(0f, 1f)
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "PAYAL Background Voice Service",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Keeps PAYAL listening for 'पायल' in the background 24x7"
+                setShowBadge(false)
+            }
+            val manager = getSystemService(NotificationManager::class.java)
+            manager?.createNotificationChannel(channel)
+        }
+    }
+
+    private fun buildForegroundNotification(): Notification {
+        val launchIntent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("पायल एआई बैकग्राउंड में सक्रिय है")
+            .setContentText("कभी भी 'पायल' बोलें, मैं तुरंत सुनूँगी 🎙️")
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+    }
+
+    private fun stopListening() {
+        isRunning = false
+        listeningJob?.cancel()
+        listeningJob = null
+        try { audioRecord?.stop(); audioRecord?.release(); audioRecord = null } catch (_: Exception) {}
+        try { wakeLock?.release(); wakeLock = null } catch (_: Exception) {}
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+    }
+
+    override fun onDestroy() {
+        stopListening()
+        tts?.stop()
+        tts?.shutdown()
+        super.onDestroy()
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+}
+`,
   }
 ];

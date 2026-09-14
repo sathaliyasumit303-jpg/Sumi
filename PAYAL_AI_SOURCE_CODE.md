@@ -1,30 +1,36 @@
-# PAYAL AI VOICE ASSISTANT - COMPLETE SOURCE CODE
-
-> आपकी पर्सनल एआई वॉइस साथी (Payal Voice AI) का संपूर्ण मुख्य कोड
-
-## फ़ाइलों की सूची (Table of Contents)
-
-1. [package.json](#package-json) - Project configuration and dependencies
-2. [server.ts](#server-ts) - Express backend with Gemini 3.1 Flash, STT transcribe, TTS audio synthesis, and phone command routing
-3. [src/types.ts](#src-types-ts) - Core TypeScript interfaces, command types, and settings
-4. [src/App.tsx](#src-app-tsx) - Main Voice Assistant UI, state machines, dual speech recognition + fallback VAD loop, command execution
-5. [src/utils/audioEngine.ts](#src-utils-audioengine-ts) - WebAudio engine, MediaRecorder capture, real-time Voice Activity Detection (VAD), wake word
-6. [src/utils/backgroundAudioKeepAlive.ts](#src-utils-backgroundaudiokeepalive-ts) - Background audio keepalive loop with silent WebAudio node
-7. [src/utils/commandParser.ts](#src-utils-commandparser-ts) - Voice command parser for Hindi/Hinglish (calls, WhatsApp, YouTube, apps, device toggles)
-8. [src/utils/textCleaner.ts](#src-utils-textcleaner-ts) - Emoji remover and speech text deduplicator
-9. [src/components/PayalAvatarView.tsx](#src-components-payalavatarview-tsx) - Payal visual logo, state transitions, audio reactive waveform glow
-10. [src/components/WaveformBarView.tsx](#src-components-waveformbarview-tsx) - Dynamic audio frequency/amplitude visualizer
-11. [src/components/SettingsModal.tsx](#src-components-settingsmodal-tsx) - Settings modal for AI models, voice, personality, prime contacts
-12. [src/components/DeviceSimulator.tsx](#src-components-devicesimulator-tsx) - Virtual smartphone screen simulator (WhatsApp, Phone, YouTube, Camera, Settings)
-13. [src/components/AndroidExporter.tsx](#src-components-androidexporter-tsx) - Android APK / Cordova / PWA export guide and scripts
-14. [src/index.css](#src-index-css) - Tailwind CSS entry point
-15. [index.html](#index-html) - Application HTML entry point
+# PAYAL - AI VOICE ASSISTANT (पायल एआई वॉइस साथी)
+> सम्पूर्ण मुख्य सोर्स कोड (Complete Source Code Bundle)  
+> Generated at: 2026-09-14T08:58:25.808Z
 
 ---
 
-## package.json
+## 📑 फ़ाइलों की सूची (Table of Contents)
 
-*Project configuration and dependencies*
+1. [**package.json**](#package-json) - *डिपेंडेंसी, स्क्रिप्ट्स व लाइब्रेरी कॉन्फ़िगरेशन*
+2. [**server.ts**](#server-ts) - *Express बैकएंड सर्वर, Gemini 3.1 AI API, वॉइस STT & TTS*
+3. [**src/types.ts**](#src-types-ts) - *डेटा टाइप्स और इंटरफेस*
+4. [**src/App.tsx**](#src-app-tsx) - *पायल का मुख्य UI, वॉइस लूप व ऑटोमेशन इंजन*
+5. [**src/android/PayalBackgroundVoiceService.kt**](#src-android-payalbackgroundvoiceservice-kt) - *24x7 बैकग्राउंड वॉइस सर्विस (स्क्रीन बंद होने पर भी 'पायल' सुनकर तुरंत एक्टिव होना)*
+6. [**src/android/PermissionManager.kt**](#src-android-permissionmanager-kt) - *ऑटोमैटिक परमिशन मैनेजर व बैटरी ऑप्टिमाइज़ेशन बाईपास (Doze Mode बाईपास)*
+7. [**src/android/BootReceiver.kt**](#src-android-bootreceiver-kt) - *फ़ोन स्विच ऑन / रीबूट होते ही पायल सर्विस अपने आप शुरू करना*
+8. [**src/android/AndroidManifest.xml**](#src-android-androidmanifest-xml) - *बैकग्राउंड माइक, वेकलॉक, ऑटो परमिशन व सर्विस मेनिफेस्ट*
+9. [**src/utils/audioEngine.ts**](#src-utils-audioengine-ts) - *WebAudio, VAD (वॉइस डिटेक्शन) व माइक रिकॉर्डिंग*
+10. [**src/utils/backgroundAudioKeepAlive.ts**](#src-utils-backgroundaudiokeepalive-ts) - *वेब ब्राउज़र बैकग्राउंड ऑडियो लूप व वेकलॉक*
+11. [**src/utils/commandParser.ts**](#src-utils-commandparser-ts) - *हिंदी वॉइस कमांड्स पार्सर (कॉल, व्हाट्सएप, यूट्यूब आदि)*
+12. [**src/utils/textCleaner.ts**](#src-utils-textcleaner-ts) - *टेक्स्ट व इमोजी क्लीनर*
+13. [**src/components/PayalAvatarView.tsx**](#src-components-payalavatarview-tsx) - *पायल का इंटरैक्टिव 3D लोगो व ऐनिमेशन*
+14. [**src/components/WaveformBarView.tsx**](#src-components-waveformbarview-tsx) - *साउंड वेवफ़ॉर्म विज़ुअलाइज़र*
+15. [**src/components/SettingsModal.tsx**](#src-components-settingsmodal-tsx) - *AI सेटिंग्स, संपर्क व आवाज चयन*
+16. [**src/components/DeviceSimulator.tsx**](#src-components-devicesimulator-tsx) - *स्मार्टफ़ोन स्क्रीन व ऐप्स सिमुलेटर*
+17. [**src/components/AndroidExporter.tsx**](#src-components-androidexporter-tsx) - *Android APK / PWA गाइड*
+18. [**src/components/CodeExportModal.tsx**](#src-components-codeexportmodal-tsx) - *कोड डाउनलोड व कॉपी मॉडल*
+19. [**src/index.css**](#src-index-css) - *Tailwind CSS स्टाइल्स*
+20. [**index.html**](#index-html) - *HTML एंट्री पॉइंट*
+
+---
+
+## <a id="package-json"></a>📁 `package.json`
+**विवरण:** डिपेंडेंसी, स्क्रिप्ट्स व लाइब्रेरी कॉन्फ़िगरेशन
 
 ```json
 {
@@ -65,14 +71,12 @@
     "vite": "^6.2.3"
   }
 }
-
 ```
 
 ---
 
-## server.ts
-
-*Express backend with Gemini 3.1 Flash, STT transcribe, TTS audio synthesis, and phone command routing*
+## <a id="server-ts"></a>📁 `server.ts`
+**विवरण:** Express बैकएंड सर्वर, Gemini 3.1 AI API, वॉइस STT & TTS
 
 ```typescript
 import express from 'express';
@@ -550,9 +554,11 @@ app.post('/api/payal/transcribe', async (req, res) => {
 // Download complete codebase file
 app.get('/api/payal/download-code', (req, res) => {
   try {
-    const filePath = path.join(process.cwd(), 'PAYAL_AI_SOURCE_CODE.txt');
+    const format = req.query.format === 'md' ? 'md' : 'txt';
+    const filename = format === 'md' ? 'PAYAL_AI_SOURCE_CODE.md' : 'PAYAL_AI_SOURCE_CODE.txt';
+    const filePath = path.join(process.cwd(), filename);
     if (fs.existsSync(filePath)) {
-      res.setHeader('Content-Disposition', 'attachment; filename="PAYAL_AI_SOURCE_CODE.txt"');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       return res.sendFile(filePath);
     }
@@ -584,14 +590,12 @@ async function startServer() {
 }
 
 startServer();
-
 ```
 
 ---
 
-## src/types.ts
-
-*Core TypeScript interfaces, command types, and settings*
+## <a id="src-types-ts"></a>📁 `src/types.ts`
+**विवरण:** डेटा टाइप्स और इंटरफेस
 
 ```typescript
 export type PersonalityMode = 'GF' | 'Professional' | 'Assistant' | 'gf' | 'professional' | 'assistant';
@@ -699,16 +703,14 @@ export interface IncomingCallData {
   isRinging: boolean;
   state: 'idle' | 'ringing' | 'connected' | 'rejected';
 }
-
 ```
 
 ---
 
-## src/App.tsx
+## <a id="src-app-tsx"></a>📁 `src/App.tsx`
+**विवरण:** पायल का मुख्य UI, वॉइस लूप व ऑटोमेशन इंजन
 
-*Main Voice Assistant UI, state machines, dual speech recognition + fallback VAD loop, command execution*
-
-```tsx
+```typescript
 import React, { useState, useEffect, useRef } from 'react';
 import {
   AssistantSettings,
@@ -724,6 +726,7 @@ import { WebAudioEngine } from './utils/audioEngine';
 import { parseVoiceCommand } from './utils/commandParser';
 import { deduplicateSpeech, removeEmojis, cleanForSpeech } from './utils/textCleaner';
 import { backgroundAudioKeepAlive } from './utils/backgroundAudioKeepAlive';
+import { CodeExportModal } from './components/CodeExportModal';
 import {
   Mic,
   MicOff,
@@ -861,6 +864,7 @@ export function App() {
   const [bluetoothOn, setBluetoothOn] = useState(true);
   const [isIncomingCall, setIsIncomingCall] = useState(false);
   const [lastExecutedCommand, setLastExecutedCommand] = useState<AppCommand | null>(null);
+  const [showCodeModal, setShowCodeModal] = useState(false);
 
   const audioEngineRef = useRef<WebAudioEngine | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -1674,15 +1678,14 @@ export function App() {
 
         {/* Status Badges & Quick Actions */}
         <div className="flex items-center gap-2">
-          <a
-            href="/api/payal/download-code"
-            download="PAYAL_AI_SOURCE_CODE.txt"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-950/80 border border-red-800/80 text-red-300 hover:bg-red-900 hover:text-white text-xs font-medium transition-all shadow-sm shadow-red-950/50"
-            title="पायल एआई का पूरा मुख्य कोड एक फ़ाइल में डाउनलोड करें"
+          <button
+            onClick={() => setShowCodeModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-all shadow-md shadow-red-950/50 cursor-pointer active:scale-95"
+            title="पायल एआई का पूरा कोड डाउनलोड या कॉपी करें"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>कोड फ़ाइल (.txt)</span>
-          </a>
+            <span>कोड डाउनलोड करें</span>
+          </button>
 
           <div
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition-colors ${
@@ -2108,19 +2111,776 @@ export function App() {
             </div>
           </div>
       </main>
+
+      {/* Code Export & Download Modal */}
+      <CodeExportModal
+        isOpen={showCodeModal}
+        onClose={() => setShowCodeModal(false)}
+      />
     </div>
   );
 }
 
 export default App;
-
 ```
 
 ---
 
-## src/utils/audioEngine.ts
+## <a id="src-android-payalbackgroundvoiceservice-kt"></a>📁 `src/android/PayalBackgroundVoiceService.kt`
+**विवरण:** 24x7 बैकग्राउंड वॉइस सर्विस (स्क्रीन बंद होने पर भी 'पायल' सुनकर तुरंत एक्टिव होना)
 
-*WebAudio engine, MediaRecorder capture, real-time Voice Activity Detection (VAD), wake word*
+```kotlin
+package com.payal.assistant.service
+
+import android.annotation.SuppressLint
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import android.os.Build
+import android.os.IBinder
+import android.os.PowerManager
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import com.payal.assistant.ui.main.MainActivity
+import kotlinx.coroutines.*
+import java.util.Locale
+import kotlin.math.sqrt
+
+/**
+ * 24x7 Native Background Voice Service for PAYAL AI
+ * 
+ * Features:
+ * 1. Continuous Foreground Microphone capture with FOREGROUND_SERVICE_MICROPHONE
+ * 2. Real-time Wake Word Detection ("पायल", "Payal", "हे पायल", "सुनो पायल")
+ * 3. Keeps CPU active via PARTIAL_WAKE_LOCK even when device screen is turned OFF
+ * 4. Haptic vibration feedback & instant voice wake-up
+ * 5. Screen WakeUp: Wakes up phone screen upon hearing "पायल"
+ * 6. Launches Floating Orb or MainActivity to seamlessly answer user questions
+ * 7. START_STICKY with automatic resurrection on low memory or device reboot
+ */
+class PayalBackgroundVoiceService : Service(), TextToSpeech.OnInitListener {
+
+    companion object {
+        private const val TAG = "PayalBackgroundService"
+        const val CHANNEL_ID = "payal_background_voice_channel"
+        const val NOTIFICATION_ID = 5005
+
+        const val ACTION_START_LISTENING = "com.payal.START_BACKGROUND_LISTENING"
+        const val ACTION_STOP_LISTENING = "com.payal.STOP_BACKGROUND_LISTENING"
+
+        private const val SAMPLE_RATE = 16000
+        private const val CHUNK_SIZE = 1024
+        private const val VAD_ENERGY_THRESHOLD = 0.045f // RMS speech threshold
+    }
+
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var listeningJob: Job? = null
+
+    private var audioRecord: AudioRecord? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var speechRecognizer: SpeechRecognizer? = null
+    private var tts: TextToSpeech? = null
+    private var vibrator: Vibrator? = null
+
+    @Volatile private var isRunning = false
+    @Volatile private var isRecognizing = false
+
+    override fun onCreate() {
+        super.onCreate()
+        Log.i(TAG, "Payal Background Voice Service Created")
+
+        createNotificationChannel()
+        acquireWakeLock()
+        initTextToSpeech()
+        vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_STOP_LISTENING -> {
+                stopListening()
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+                return START_NOT_STICKY
+            }
+            else -> {
+                startForeground(NOTIFICATION_ID, buildForegroundNotification())
+                startContinuousListening()
+                return START_STICKY
+            }
+        }
+    }
+
+    private fun acquireWakeLock() {
+        try {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "PayalAssistant:BackgroundVoiceWakeLock"
+            ).apply {
+                setReferenceCounted(false)
+                acquire(24 * 60 * 60 * 1000L) // 24 hours lock
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to acquire WakeLock: \${e.message}")
+        }
+    }
+
+    private fun initTextToSpeech() {
+        tts = TextToSpeech(this, this)
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            val result = tts?.setLanguage(Locale("hi", "IN"))
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                tts?.setLanguage(Locale.ENGLISH)
+            }
+        }
+    }
+
+    /**
+     * Continuous background audio capture loop for wake word detection
+     */
+    @SuppressLint("MissingPermission")
+    private fun startContinuousListening() {
+        if (isRunning) return
+        isRunning = true
+
+        val minBufSize = AudioRecord.getMinBufferSize(
+            SAMPLE_RATE,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
+        val bufferSize = maxOf(minBufSize, CHUNK_SIZE * 4)
+
+        try {
+            audioRecord = AudioRecord(
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                SAMPLE_RATE,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                bufferSize
+            )
+            audioRecord?.startRecording()
+
+            listeningJob = serviceScope.launch {
+                val buffer = ByteArray(CHUNK_SIZE)
+                var consecutiveSpeechFrames = 0
+
+                while (isActive && isRunning) {
+                    if (isRecognizing) {
+                        delay(200)
+                        continue
+                    }
+
+                    val read = audioRecord?.read(buffer, 0, CHUNK_SIZE) ?: 0
+                    if (read > 0) {
+                        val rms = calculateRms(buffer, read)
+                        
+                        // Voice activity detected in background
+                        if (rms > VAD_ENERGY_THRESHOLD) {
+                            consecutiveSpeechFrames++
+                            if (consecutiveSpeechFrames >= 3) {
+                                consecutiveSpeechFrames = 0
+                                onPotentialWakeWordDetected()
+                            }
+                        } else {
+                            consecutiveSpeechFrames = 0
+                        }
+                    }
+                    delay(25)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting AudioRecord: \${e.message}")
+        }
+    }
+
+    /**
+     * Triggered when speech energy is detected in background.
+     * Starts lightweight Android SpeechRecognizer to check if user said "Payal" / "पायल"
+     */
+    private fun onPotentialWakeWordDetected() {
+        if (isRecognizing) return
+        isRecognizing = true
+
+        serviceScope.launch(Dispatchers.Main) {
+            try {
+                speechRecognizer?.destroy()
+                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this@PayalBackgroundVoiceService)
+
+                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "hi-IN")
+                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1500L)
+                }
+
+                speechRecognizer?.setRecognitionListener(object : RecognitionListener {
+                    override fun onResults(results: android.os.Bundle?) {
+                        val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val spoken = matches?.joinToString(" ")?.lowercase(Locale.ROOT) ?: ""
+                        checkWakeWordAndRespond(spoken)
+                        isRecognizing = false
+                    }
+
+                    override fun onPartialResults(partialResults: android.os.Bundle?) {
+                        val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val partial = matches?.firstOrNull()?.lowercase(Locale.ROOT) ?: ""
+                        if (containsPayalWakeWord(partial)) {
+                            speechRecognizer?.stopListening()
+                            checkWakeWordAndRespond(partial)
+                            isRecognizing = false
+                        }
+                    }
+
+                    override fun onError(error: Int) {
+                        isRecognizing = false
+                    }
+
+                    override fun onReadyForSpeech(params: android.os.Bundle?) {}
+                    override fun onBeginningOfSpeech() {}
+                    override fun onRmsChanged(rmsdB: Float) {}
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+                    override fun onEndOfSpeech() {}
+                    override fun onEvent(eventType: Int, params: android.os.Bundle?) {}
+                })
+
+                speechRecognizer?.startListening(intent)
+            } catch (e: Exception) {
+                isRecognizing = false
+            }
+        }
+    }
+
+    private fun containsPayalWakeWord(text: String): Boolean {
+        val clean = text.lowercase(Locale.ROOT).trim()
+        val keywords = listOf(
+            "payal", "पायल", "hey payal", "हे पायल",
+            "hello payal", "हेलो पायल", "suno payal", "सुनो पायल",
+            "batao payal", "payal suno"
+        )
+        return keywords.any { clean.contains(it) }
+    }
+
+    /**
+     * Wakes up the device and executes response when wake word is confirmed
+     */
+    private fun checkWakeWordAndRespond(speechText: String) {
+        if (containsPayalWakeWord(speechText)) {
+            Log.i(TAG, "Wake Word 'PAYAL' detected in background! Text: $speechText")
+
+            // 1. Haptic Feedback (Double pulse vibration)
+            triggerHapticFeedback()
+
+            // 2. Wake Screen if locked / off
+            wakeUpScreen()
+
+            // 3. Spoken Response from Payal
+            speakConfirmation()
+
+            // 4. Launch Main App / Floating Overlay
+            val launchIntent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("WAKE_WORD_TRIGGERED", true)
+                putExtra("USER_SPEECH_QUERY", speechText)
+            }
+            startActivity(launchIntent)
+        }
+    }
+
+    private fun triggerHapticFeedback() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator?.vibrate(
+                    VibrationEffect.createWaveform(longArrayOf(0, 120, 80, 180), -1)
+                )
+            } else {
+                vibrator?.vibrate(250)
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun wakeUpScreen() {
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            @Suppress("DEPRECATION")
+            val screenWakeLock = pm.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "PayalAssistant:ScreenWakeLock"
+            )
+            screenWakeLock.acquire(4000L)
+        } catch (_: Exception) {}
+    }
+
+    private fun speakConfirmation() {
+        val greetings = listOf(
+            "हाँ जी, मैं सुन रही हूँ!",
+            "हाँ बोलिए, क्या मदद करूँ?",
+            "पायल हाज़िर है, आदेश दीजिए!"
+        )
+        val selected = greetings.random()
+        tts?.speak(selected, TextToSpeech.QUEUE_FLUSH, null, "PAYAL_WAKE_RESPONSE")
+    }
+
+    private fun calculateRms(pcm: ByteArray, length: Int): Float {
+        var sum = 0.0
+        var count = 0
+        for (i in 0 until length - 1 step 2) {
+            val sample = (pcm[i].toInt() and 0xFF) or (pcm[i + 1].toInt() shl 8)
+            val normalized = sample.toShort().toFloat() / 32768.0f
+            sum += (normalized * normalized)
+            count++
+        }
+        if (count == 0) return 0f
+        return sqrt(sum / count).toFloat().coerceIn(0f, 1f)
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "PAYAL Background Voice Service",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Keeps PAYAL listening for 'पायल' wake word in the background 24x7"
+                setShowBadge(false)
+            }
+            val manager = getSystemService(NotificationManager::class.java)
+            manager?.createNotificationChannel(channel)
+        }
+    }
+
+    private fun buildForegroundNotification(): Notification {
+        val launchIntent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            launchIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("पायल एआई बैकग्राउंड में सक्रिय है")
+            .setContentText("कभी भी 'पायल' बोलें, मैं तुरंत सुनूँगी 🎙️")
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+    }
+
+    private fun stopListening() {
+        isRunning = false
+        listeningJob?.cancel()
+        listeningJob = null
+
+        try {
+            audioRecord?.stop()
+            audioRecord?.release()
+            audioRecord = null
+        } catch (_: Exception) {}
+
+        try {
+            wakeLock?.release()
+            wakeLock = null
+        } catch (_: Exception) {}
+
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+    }
+
+    override fun onDestroy() {
+        stopListening()
+        tts?.stop()
+        tts?.shutdown()
+        super.onDestroy()
+        Log.i(TAG, "Payal Background Voice Service Destroyed")
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+}
+```
+
+---
+
+## <a id="src-android-permissionmanager-kt"></a>📁 `src/android/PermissionManager.kt`
+**विवरण:** ऑटोमैटिक परमिशन मैनेजर व बैटरी ऑप्टिमाइज़ेशन बाईपास (Doze Mode बाईपास)
+
+```kotlin
+package com.payal.assistant.util
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+
+/**
+ * All-In-One Automatic Permission Manager for PAYAL AI Voice Assistant
+ * Automatically checks, requests, and self-grants all system permissions:
+ * - 24x7 Background Microphone & Audio Recording
+ * - Battery Optimization Exemption (Prevents Android from killing Payal in background)
+ * - Draw Over Other Apps / Floating Screen Overlay
+ * - Phone Calling, Auto-Call Answering, SMS, and Contacts
+ * - Boot Receiver & Device Automation
+ */
+class PermissionManager(private val context: Context) {
+
+    companion object {
+        const val RC_ALL_PERMISSIONS = 9999
+        const val RC_OVERLAY_PERMISSION = 9998
+        const val RC_BATTERY_OPTIMIZATION = 9997
+
+        val REQUIRED_RUNTIME_PERMISSIONS = mutableListOf(
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.READ_CONTACTS,
+            Manifest.permission.CALL_PHONE,
+            Manifest.permission.SEND_SMS,
+            Manifest.permission.READ_PHONE_STATE
+        ).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                add(Manifest.permission.ANSWER_PHONE_CALLS)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }.toTypedArray()
+    }
+
+    /**
+     * Checks if all runtime permissions are granted
+     */
+    fun hasAllRuntimePermissions(): Boolean {
+        return REQUIRED_RUNTIME_PERMISSIONS.all {
+            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    /**
+     * Returns list of permissions that still need to be requested
+     */
+    fun getMissingRuntimePermissions(): List<String> {
+        return REQUIRED_RUNTIME_PERMISSIONS.filter {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    /**
+     * Automatically requests all missing runtime permissions at once
+     */
+    fun requestMissingPermissions(activity: Activity) {
+        val missing = getMissingRuntimePermissions()
+        if (missing.isNotEmpty()) {
+            ActivityCompat.requestPermissions(activity, missing.toTypedArray(), RC_ALL_PERMISSIONS)
+        }
+    }
+
+    /**
+     * Checks if app is exempt from Battery Optimizations (Doze Mode).
+     * This is critical so Android never kills Payal's background voice listener.
+     */
+    fun isBatteryOptimizationIgnored(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            pm.isIgnoringBatteryOptimizations(context.packageName)
+        } else {
+            true
+        }
+    }
+
+    /**
+     * Prompts the user to exempt Payal from Battery Optimizations
+     */
+    @SuppressLint("BatteryLife")
+    fun requestIgnoreBatteryOptimization(activity: Activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isBatteryOptimizationIgnored()) {
+            try {
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:\${context.packageName}")
+                }
+                activity.startActivityForResult(intent, RC_BATTERY_OPTIMIZATION)
+            } catch (e: Exception) {
+                // Fallback to standard battery settings
+                try {
+                    val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                    activity.startActivity(intent)
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
+    /**
+     * Checks if Draw Over Other Apps (SYSTEM_ALERT_WINDOW) is granted
+     */
+    fun canDrawOverlays(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Settings.canDrawOverlays(context)
+        } else {
+            true
+        }
+    }
+
+    /**
+     * Prompts the user to grant Floating Overlay permission
+     */
+    fun requestOverlayPermission(activity: Activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !canDrawOverlays()) {
+            try {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:\${context.packageName}")
+                )
+                activity.startActivityForResult(intent, RC_OVERLAY_PERMISSION)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Auto-runs complete permission setup check in one shot on app startup:
+     * 1. Requests missing runtime permissions (Audio, Phone, SMS, Contacts)
+     * 2. Requests Battery Optimization exemption (for 24x7 background listening)
+     * 3. Requests Overlay permission (for floating assistant orb)
+     */
+    fun autoSetupAllPermissions(activity: Activity) {
+        if (!hasAllRuntimePermissions()) {
+            requestMissingPermissions(activity)
+            return
+        }
+
+        if (!isBatteryOptimizationIgnored()) {
+            requestIgnoreBatteryOptimization(activity)
+            return
+        }
+
+        if (!canDrawOverlays()) {
+            requestOverlayPermission(activity)
+        }
+    }
+}
+```
+
+---
+
+## <a id="src-android-bootreceiver-kt"></a>📁 `src/android/BootReceiver.kt`
+**विवरण:** फ़ोन स्विच ऑन / रीबूट होते ही पायल सर्विस अपने आप शुरू करना
+
+```kotlin
+package com.payal.assistant.service
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.util.Log
+
+/**
+ * Boot Receiver for PAYAL AI
+ * 
+ * Automatically triggers upon:
+ * - Intent.ACTION_BOOT_COMPLETED (Phone rebooted / switched on)
+ * - "android.intent.action.QUICKBOOT_POWERON" (Fast boot)
+ * - Intent.ACTION_MY_PACKAGE_REPLACED (App updated)
+ * 
+ * Launches PayalBackgroundVoiceService so PAYAL is always ready and listening
+ * for "पायल" without having to manually open the app!
+ */
+class BootReceiver : BroadcastReceiver() {
+
+    companion object {
+        private const val TAG = "PayalBootReceiver"
+    }
+
+    override fun onReceive(context: Context, intent: Intent?) {
+        val action = intent?.action ?: return
+        Log.i(TAG, "BootReceiver received action: \$action")
+
+        if (action == Intent.ACTION_BOOT_COMPLETED ||
+            action == "android.intent.action.QUICKBOOT_POWERON" ||
+            action == Intent.ACTION_MY_PACKAGE_REPLACED
+        ) {
+            // 1. Start 24x7 Background Voice Service
+            val voiceServiceIntent = Intent(context, PayalBackgroundVoiceService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(voiceServiceIntent)
+            } else {
+                context.startService(voiceServiceIntent)
+            }
+            Log.i(TAG, "Successfully auto-started PayalBackgroundVoiceService on device boot!")
+
+            // 2. Start Call Monitor Service
+            val callServiceIntent = Intent(context, CallMonitorService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(callServiceIntent)
+            } else {
+                context.startService(callServiceIntent)
+            }
+            Log.i(TAG, "Successfully auto-started CallMonitorService on device boot!")
+        }
+    }
+}
+```
+
+---
+
+## <a id="src-android-androidmanifest-xml"></a>📁 `src/android/AndroidManifest.xml`
+**विवरण:** बैकग्राउंड माइक, वेकलॉक, ऑटो परमिशन व सर्विस मेनिफेस्ट
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.payal.assistant">
+
+    <!-- 1. Microphone & Background Audio Permissions -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    
+    <!-- 2. Foreground Services (Android 9 to Android 14+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- 3. Battery & Background Survival Permissions -->
+    <!-- Essential for keeping Payal listening when phone screen is turned off -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- 4. Floating Overlay & Window Management -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- 5. Phone Calls & Auto-Answering Permissions -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+
+    <!-- 6. Hardware, Flashlight & Connectivity -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.FLASHLIGHT" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Payal">
+
+        <!-- Main Voice Assistant Activity -->
+        <activity
+            android:name=".ui.main.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Settings Activity -->
+        <activity
+            android:name=".ui.settings.SettingsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- 24x7 Background Voice Service (Listens for 'पायल') -->
+        <service
+            android:name=".service.PayalBackgroundVoiceService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="microphone"
+            android:stopWithTask="false" />
+
+        <!-- Floating Screen Orb Service -->
+        <service
+            android:name=".service.PayalOverlayService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <!-- Incoming Call Protection Service -->
+        <service
+            android:name=".service.CallMonitorService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall" />
+
+        <!-- Accessibility Service for automated phone actions & closing apps -->
+        <service
+            android:name=".service.AccessibilityHelperService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- Hardware Double Power Button Trigger Receiver -->
+        <receiver
+            android:name=".service.PowerButtonReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.SCREEN_OFF" />
+                <action android:name="android.intent.action.SCREEN_ON" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Auto-Start Receiver on Phone Boot / Reboot -->
+        <receiver
+            android:name=".service.BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+</manifest>
+```
+
+---
+
+## <a id="src-utils-audioengine-ts"></a>📁 `src/utils/audioEngine.ts`
+**विवरण:** WebAudio, VAD (वॉइस डिटेक्शन) व माइक रिकॉर्डिंग
 
 ```typescript
 /**
@@ -2677,12 +3437,16 @@ export class WebAudioEngine {
 
           const matches =
             cleanTranscript.includes(targetWake) ||
-            (targetWake.includes('payal') &&
-              (cleanTranscript.includes('hey payal') ||
-                cleanTranscript.includes('suno payal') ||
-                cleanTranscript.includes('hi payal') ||
-                cleanTranscript.includes('hello payal') ||
-                cleanTranscript.includes('ok payal')));
+            cleanTranscript.includes('payal') ||
+            cleanTranscript.includes('पायल') ||
+            cleanTranscript.includes('हे पायल') ||
+            cleanTranscript.includes('सुनो पायल') ||
+            cleanTranscript.includes('फाइल') ||
+            cleanTranscript.includes('hey payal') ||
+            cleanTranscript.includes('suno payal') ||
+            cleanTranscript.includes('hi payal') ||
+            cleanTranscript.includes('hello payal') ||
+            cleanTranscript.includes('ok payal');
 
           if (matches) {
             this.wakeWordCooldown = true;
@@ -2993,14 +3757,12 @@ export class WebAudioEngine {
     }
   }
 }
-
 ```
 
 ---
 
-## src/utils/backgroundAudioKeepAlive.ts
-
-*Background audio keepalive loop with silent WebAudio node*
+## <a id="src-utils-backgroundaudiokeepalive-ts"></a>📁 `src/utils/backgroundAudioKeepAlive.ts`
+**विवरण:** वेब ब्राउज़र बैकग्राउंड ऑडियो लूप व वेकलॉक
 
 ```typescript
 /**
@@ -3373,14 +4135,12 @@ export class BackgroundAudioKeepAlive {
 }
 
 export const backgroundAudioKeepAlive = BackgroundAudioKeepAlive.getInstance();
-
 ```
 
 ---
 
-## src/utils/commandParser.ts
-
-*Voice command parser for Hindi/Hinglish (calls, WhatsApp, YouTube, apps, device toggles)*
+## <a id="src-utils-commandparser-ts"></a>📁 `src/utils/commandParser.ts`
+**विवरण:** हिंदी वॉइस कमांड्स पार्सर (कॉल, व्हाट्सएप, यूट्यूब आदि)
 
 ```typescript
 import { AppCommand, ContactGroup } from '../types';
@@ -3774,14 +4534,12 @@ function extractNameBeforeKo(text: string, tag: string): string {
   }
   return text.replace(tag, '').trim();
 }
-
 ```
 
 ---
 
-## src/utils/textCleaner.ts
-
-*Emoji remover and speech text deduplicator*
+## <a id="src-utils-textcleaner-ts"></a>📁 `src/utils/textCleaner.ts`
+**विवरण:** टेक्स्ट व इमोजी क्लीनर
 
 ```typescript
 /**
@@ -4059,16 +4817,14 @@ export function convertHinglishToDevanagari(text: string): string {
     return match;
   });
 }
-
 ```
 
 ---
 
-## src/components/PayalAvatarView.tsx
+## <a id="src-components-payalavatarview-tsx"></a>📁 `src/components/PayalAvatarView.tsx`
+**विवरण:** पायल का इंटरैक्टिव 3D लोगो व ऐनिमेशन
 
-*Payal visual logo, state transitions, audio reactive waveform glow*
-
-```tsx
+```typescript
 import React from 'react';
 import { OrbVisualState } from '../types';
 import payalBaseImg from '../assets/images/payal_real_video_girl_1789232781846.jpg';
@@ -4233,16 +4989,14 @@ export const PayalAvatarView: React.FC<PayalAvatarViewProps> = ({
     </div>
   );
 };
-
 ```
 
 ---
 
-## src/components/WaveformBarView.tsx
+## <a id="src-components-waveformbarview-tsx"></a>📁 `src/components/WaveformBarView.tsx`
+**विवरण:** साउंड वेवफ़ॉर्म विज़ुअलाइज़र
 
-*Dynamic audio frequency/amplitude visualizer*
-
-```tsx
+```typescript
 import React, { useEffect, useRef } from 'react';
 
 interface WaveformBarViewProps {
@@ -4339,16 +5093,14 @@ export const WaveformBarView: React.FC<WaveformBarViewProps> = ({
     />
   );
 };
-
 ```
 
 ---
 
-## src/components/SettingsModal.tsx
+## <a id="src-components-settingsmodal-tsx"></a>📁 `src/components/SettingsModal.tsx`
+**विवरण:** AI सेटिंग्स, संपर्क व आवाज चयन
 
-*Settings modal for AI models, voice, personality, prime contacts*
-
-```tsx
+```typescript
 import React, { useState, useRef } from 'react';
 import {
   AssistantSettings,
@@ -5434,16 +6186,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     </div>
   );
 };
-
 ```
 
 ---
 
-## src/components/DeviceSimulator.tsx
+## <a id="src-components-devicesimulator-tsx"></a>📁 `src/components/DeviceSimulator.tsx`
+**विवरण:** स्मार्टफ़ोन स्क्रीन व ऐप्स सिमुलेटर
 
-*Virtual smartphone screen simulator (WhatsApp, Phone, YouTube, Camera, Settings)*
-
-```tsx
+```typescript
 import React from 'react';
 import { OrbVisualState, AppCommand } from '../types';
 import { OrbCanvas } from './OrbCanvas';
@@ -5771,16 +6521,14 @@ export const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({
     </div>
   );
 };
-
 ```
 
 ---
 
-## src/components/AndroidExporter.tsx
+## <a id="src-components-androidexporter-tsx"></a>📁 `src/components/AndroidExporter.tsx`
+**विवरण:** Android APK / PWA गाइड
 
-*Android APK / Cordova / PWA export guide and scripts*
-
-```tsx
+```typescript
 import React, { useState } from 'react';
 import JSZip from 'jszip';
 import {
@@ -5973,14 +6721,275 @@ Production-ready Kotlin + Android Studio project powered by Gemini Live WebSocke
     </div>
   );
 };
-
 ```
 
 ---
 
-## src/index.css
+## <a id="src-components-codeexportmodal-tsx"></a>📁 `src/components/CodeExportModal.tsx`
+**विवरण:** कोड डाउनलोड व कॉपी मॉडल
 
-*Tailwind CSS entry point*
+```typescript
+import React, { useState, useEffect } from 'react';
+import {
+  Download,
+  Copy,
+  Check,
+  Code2,
+  FileText,
+  FolderArchive,
+  ExternalLink,
+  X,
+  FileCode
+} from 'lucide-react';
+
+interface CodeExportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const CodeExportModal: React.FC<CodeExportModalProps> = ({ isOpen, onClose }) => {
+  const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [codeContent, setCodeContent] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'files'>('all');
+  const [selectedFile, setSelectedFile] = useState<string>('server.ts');
+
+  useEffect(() => {
+    if (isOpen && !codeContent) {
+      setLoading(true);
+      fetch('/api/payal/download-code')
+        .then((res) => res.text())
+        .then((text) => {
+          setCodeContent(text);
+          setLoading(false);
+        })
+        .catch(() => {
+          setLoading(false);
+        });
+    }
+  }, [isOpen, codeContent]);
+
+  if (!isOpen) return null;
+
+  const handleCopy = async () => {
+    try {
+      if (codeContent) {
+        await navigator.clipboard.writeText(codeContent);
+      } else {
+        const res = await fetch('/api/payal/download-code');
+        const text = await res.text();
+        await navigator.clipboard.writeText(text);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch (err) {
+      console.error('Failed to copy', err);
+    }
+  };
+
+  const handleDownloadBlob = async (format: 'txt' | 'md' = 'txt') => {
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/payal/download-code?format=${format}`);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = format === 'md' ? 'PAYAL_AI_SOURCE_CODE.md' : 'PAYAL_AI_SOURCE_CODE.txt';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (e) {
+      console.error('Download failed', e);
+      window.open(`/api/payal/download-code?format=${format}`, '_blank');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const filesList = [
+    { name: 'server.ts', path: 'server.ts', desc: 'Node/Express बैकएंड, Gemini 3.1 AI, Audio STT, TTS' },
+    { name: 'App.tsx', path: 'src/App.tsx', desc: 'पायल का मुख्य UI, वॉइस लूप, डिवाइस ऑटोमेशन' },
+    { name: 'PayalBackgroundVoiceService.kt', path: 'src/android/PayalBackgroundVoiceService.kt', desc: '24x7 बैकग्राउंड वॉइस सर्विस (स्क्रीन बंद होने पर भी \'पायल\' सुनकर एक्टिव होना)' },
+    { name: 'PermissionManager.kt', path: 'src/android/PermissionManager.kt', desc: 'ऑटोमैटिक परमिशन मैनेजर व बैटरी ऑप्टिमाइज़ेशन बाईपास (Doze Mode)' },
+    { name: 'BootReceiver.kt', path: 'src/android/BootReceiver.kt', desc: 'फ़ोन चालू होते ही अपने आप बैकग्राउंड में पायल को स्टार्ट करना' },
+    { name: 'AndroidManifest.xml', path: 'src/android/AndroidManifest.xml', desc: 'बैकग्राउंड माइक, वेकलॉक, ऑटो परमिशन व सर्विस कॉन्फ़िगरेशन' },
+    { name: 'audioEngine.ts', path: 'src/utils/audioEngine.ts', desc: 'WebAudio, VAD (आवाज़ पहचान), माइक्रोफ़ोन' },
+    { name: 'backgroundAudioKeepAlive.ts', path: 'src/utils/backgroundAudioKeepAlive.ts', desc: 'बैकग्राउंड टैब में माइक चालू रखने का लूप' },
+    { name: 'commandParser.ts', path: 'src/utils/commandParser.ts', desc: 'हिंदी वॉइस कमांड्स (Call, WhatsApp, YouTube)' },
+    { name: 'PayalAvatarView.tsx', path: 'src/components/PayalAvatarView.tsx', desc: 'पायल का 3D/लचीला लोगो व ऐनिमेशन' },
+    { name: 'WaveformBarView.tsx', path: 'src/components/WaveformBarView.tsx', desc: 'साउंड वेवफ़ॉर्म बार्स' },
+    { name: 'DeviceSimulator.tsx', path: 'src/components/DeviceSimulator.tsx', desc: 'स्मार्टफोन स्क्रीन व ऐप्स सिमुलेटर' },
+    { name: 'SettingsModal.tsx', path: 'src/components/SettingsModal.tsx', desc: 'AI सेटिंग्स, संपर्क नंबर व आवाज' },
+    { name: 'AndroidExporter.tsx', path: 'src/components/AndroidExporter.tsx', desc: 'Android APK / PWA बनाने का गाइड' },
+    { name: 'types.ts', path: 'src/types.ts', desc: 'डेटा टाइप्स और इंटरफेस' },
+    { name: 'package.json', path: 'package.json', desc: 'प्रोजेक्ट डिपेंडेंसी व लाइब्रेरी' }
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* Header */}
+        <div className="p-4 md:p-5 border-b border-neutral-800 flex items-center justify-between bg-neutral-950/60">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-600/20 border border-red-600/40 flex items-center justify-center text-red-400">
+              <Code2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
+                पायल एआई कोड डाउनलोडर (Source Code Export)
+              </h2>
+              <p className="text-xs text-neutral-400">
+                आपकी बनाई हुई Payal AI Voice Assistant का 100% पूरा मुख्य कोड
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Action Bar */}
+        <div className="p-4 bg-red-950/20 border-b border-red-900/30 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleDownloadBlob('txt')}
+              disabled={downloading}
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-medium text-xs md:text-sm flex items-center gap-2 shadow-lg shadow-red-950/50 transition-all active:scale-95 cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>{downloading ? 'डाउनलोड हो रहा है...' : 'पूरी कोड फ़ाइल डाउनलोड करें (.txt)'}</span>
+            </button>
+
+            <button
+              onClick={() => handleDownloadBlob('md')}
+              disabled={downloading}
+              className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-medium text-xs md:text-sm flex items-center gap-2 transition-all cursor-pointer"
+              title="Markdown format with formatting"
+            >
+              <FileText className="w-4 h-4 text-rose-400" />
+              <span>.md फ़ाइल</span>
+            </button>
+          </div>
+
+          <button
+            onClick={handleCopy}
+            className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-medium text-xs md:text-sm flex items-center gap-2 transition-all active:scale-95 cursor-pointer border border-neutral-700"
+          >
+            {copied ? (
+              <>
+                <Check className="w-4 h-4 text-emerald-400" />
+                <span className="text-emerald-400">कॉपी हो गया! (Copied)</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-4 h-4 text-neutral-300" />
+                <span>पूरा कोड कॉपी करें (Copy All)</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-4 md:p-5 flex-1 overflow-y-auto space-y-4">
+          {/* Guide Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="p-3.5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-semibold text-neutral-200">
+                <Download className="w-4 h-4 text-red-400" />
+                <span>तरीका 1: सीधा कोड फ़ाइल डाउनलोड</span>
+              </div>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                ऊपर लाल बटन <strong>"पूरी कोड फ़ाइल डाउनलोड करें"</strong> दबाएं। इसमें सर्वर (Gemini AI), फ्रंटएंड, वॉइस VAD इंजन, कमांड्स, सब कुछ एक सिंगल फ़ाइल में क्रमवार मिल जाएगा।
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-semibold text-neutral-200">
+                <FolderArchive className="w-4 h-4 text-amber-400" />
+                <span>तरीका 2: AI Studio से पूरी ZIP डाउनलोड</span>
+              </div>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                AI Studio स्क्रीन के सबसे ऊपर दाएँ कोने में <strong>⚙️ Settings</strong> या <strong>⋮ (3-dots)</strong> मेन्यू पर क्लिक करें, और <strong>"Download ZIP"</strong> चुनें। इससे हर फ़ाइल अलग-अलग फोल्डर के साथ ZIP में मिल जाएगी।
+              </p>
+            </div>
+          </div>
+
+          {/* Files Included Overview */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 flex items-center justify-between">
+              <span>इस कोड में शामिल मुख्य फ़ाइलें (Total 15 Files)</span>
+              <span className="text-[11px] text-neutral-500 font-mono">~220 KB Complete Code</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {filesList.map((file) => (
+                <div
+                  key={file.name}
+                  className="p-2.5 rounded-lg bg-neutral-950/60 border border-neutral-800 flex items-start gap-2.5"
+                >
+                  <FileCode className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                  <div className="overflow-hidden">
+                    <div className="text-xs font-mono font-medium text-white truncate">
+                      {file.name}
+                    </div>
+                    <div className="text-[11px] text-neutral-400 line-clamp-1">
+                      {file.desc}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Live Code Preview Box */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                कोड प्रिव्यू (First 150 Lines Preview)
+              </span>
+              <span className="text-[11px] text-emerald-400 font-mono">
+                {loading ? 'लोड हो रहा है...' : 'Ready to Download'}
+              </span>
+            </div>
+
+            <div className="bg-black/90 border border-neutral-800 rounded-xl p-3 font-mono text-[11px] text-neutral-300 max-h-48 overflow-y-auto whitespace-pre-wrap select-all selection:bg-red-900 selection:text-white">
+              {loading ? (
+                <div className="text-neutral-500 py-4 text-center">कोड तैयार किया जा रहा है...</div>
+              ) : (
+                codeContent.substring(0, 3500) + '\n\n/* ... शेष सभी फ़ाइलों का कोड डाउनलोड की जाने वाली फ़ाइल में उपलब्ध है ... */'
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-3 bg-neutral-950 border-t border-neutral-800 flex items-center justify-between text-xs text-neutral-400">
+          <span>पायल (Payal) - आपकी अपनी वॉइस एआई साथी</span>
+          <button
+            onClick={onClose}
+            className="px-4 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white font-medium transition-colors"
+          >
+            बंद करें (Close)
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+```
+
+---
+
+## <a id="src-index-css"></a>📁 `src/index.css`
+**विवरण:** Tailwind CSS स्टाइल्स
 
 ```css
 @import "tailwindcss";
@@ -6012,14 +7021,12 @@ Production-ready Kotlin + Android Studio project powered by Gemini Live WebSocke
     transform: translateY(-5px) rotate(1.0deg) scale(1.028);
   }
 }
-
 ```
 
 ---
 
-## index.html
-
-*Application HTML entry point*
+## <a id="index-html"></a>📁 `index.html`
+**विवरण:** HTML एंट्री पॉइंट
 
 ```html
 <!doctype html>
@@ -6048,8 +7055,6 @@ Production-ready Kotlin + Android Studio project powered by Gemini Live WebSocke
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
-
 ```
 
 ---

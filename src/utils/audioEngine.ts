@@ -552,12 +552,16 @@ export class WebAudioEngine {
 
           const matches =
             cleanTranscript.includes(targetWake) ||
-            (targetWake.includes('payal') &&
-              (cleanTranscript.includes('hey payal') ||
-                cleanTranscript.includes('suno payal') ||
-                cleanTranscript.includes('hi payal') ||
-                cleanTranscript.includes('hello payal') ||
-                cleanTranscript.includes('ok payal')));
+            cleanTranscript.includes('payal') ||
+            cleanTranscript.includes('पायल') ||
+            cleanTranscript.includes('हे पायल') ||
+            cleanTranscript.includes('सुनो पायल') ||
+            cleanTranscript.includes('फाइल') ||
+            cleanTranscript.includes('hey payal') ||
+            cleanTranscript.includes('suno payal') ||
+            cleanTranscript.includes('hi payal') ||
+            cleanTranscript.includes('hello payal') ||
+            cleanTranscript.includes('ok payal');
 
           if (matches) {
             this.wakeWordCooldown = true;
